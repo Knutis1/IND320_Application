@@ -26,6 +26,7 @@ UNITS = {
     "filling_level_change": "Change (share of capacity)",
 }
 
+#THe caching decorator is used to cache the data loading function, so that it doesn't have to be reloaded every time the app is run.
 @st.cache_data
 def load_data():
     # __file__ is modules/utils.py -> go up to the repo root, then into data/
