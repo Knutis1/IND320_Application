@@ -1,0 +1,15 @@
+# Secrets - never commit these
+.env
+App/.streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+
+# Spark / Hadoop leftovers created when running jobs locally
+spark-warehouse/
+metastore_db/
+derby.log
+jars/
