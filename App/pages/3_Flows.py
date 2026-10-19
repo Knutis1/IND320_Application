@@ -17,13 +17,14 @@ def load_yearly():
 
 
 @st.cache_data(ttl=3600)
-def load_hourly(connection, months):
-    """Hourly rows for one connection, limited to the chosen months."""
+def load_hourly(connection, year, months):
+    """Hourly rows for one connection, limited to a year and chosen months."""
     rows = list(get_db().flows_hourly.find({"connection": connection},
                                            {"_id": 0}))
     df = pd.DataFrame(rows)
     df["ts"] = pd.to_datetime(df["ts"])
-    return df[df["ts"].dt.month.isin(months)].sort_values("ts")
+    df = df[(df["ts"].dt.year == year) & (df["ts"].dt.month.isin(months))]
+    return df.sort_values("ts")
 
 
 yearly = load_yearly()
@@ -53,7 +54,7 @@ with right:
     if not picked:
         st.info("Choose at least one month.")
     else:
-        hourly = load_hourly(conn, [MONTHS[m] for m in picked])
+        hourly = load_hourly(conn, year, tuple(MONTHS[m] for m in picked))
         line = px.line(hourly, x="ts", y="flow_mw", color="direction",
                        title=f"{conn}: flow per direction")
         line.update_layout(xaxis_title="Time (UTC)", yaxis_title="Flow (MW)",
