@@ -38,62 +38,6 @@ App/
     └── 4_About.py
 ```
 
-## Running the app locally
-
-```
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r App/requirements.txt
-.\.venv\Scripts\python.exe -m streamlit run App/main.py
-```
-
-The Flows page reads from MongoDB, so it needs `App/.streamlit/secrets.toml`:
-
-```toml
-MONGO_URI = "mongodb+srv://<user>:<password>@<cluster>.mongodb.net/"
-```
-
-That file is not in the repository. On Streamlit Cloud the same value goes in
-the app's Secrets settings.
-
-## Running the notebook
-
-Part 2 needs more than the app does:
-
-1. **Cassandra** in Docker:
-
-   ```
-   docker run --name cassandra -p 9042:9042 -e MAX_HEAP_SIZE=2G -e HEAP_NEWSIZE=400M -d cassandra:5.0
-   ```
-
-   The keyspace and table are created with `cqlsh` inside the container (the
-   Python `cassandra-driver` cannot be imported on Python 3.12, and Spark uses
-   the connector jar rather than that driver):
-
-   ```
-   docker exec cassandra cqlsh -e "CREATE KEYSPACE IF NOT EXISTS ind320 WITH replication = {'class':'SimpleStrategy','replication_factor':1};"
-   docker exec cassandra cqlsh -e "CREATE TABLE IF NOT EXISTS ind320.crossborder_flows (connection text, direction text, ts timestamp, flow_mw double, PRIMARY KEY ((connection, direction), ts));"
-   ```
-
-2. **Java 17** and, on Windows, `winutils.exe` + `hadoop.dll` in `C:\hadoop\bin`.
-   `modules/spark_env.py` locates both and sets the environment itself.
-
-3. **A `.env` file** in the project root (not in the repository):
-
-   ```
-   ENTSOE_TOKEN=<your token>
-   MONGO_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/
-   ```
-
-4. Extra packages used only by the notebook:
-
-   ```
-   pip install pyspark==3.5.3 entsoe-py python-dotenv matplotlib
-   ```
-
-The ENTSO-E download takes several minutes, so it is cached to
-`App/notebooks/flows_cache.parquet`. That file is not in the repository; it is
-recreated on the first run and reused afterwards.
-
 ## Data flow
 
 ```
