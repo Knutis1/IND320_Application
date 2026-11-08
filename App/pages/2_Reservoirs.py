@@ -3,11 +3,17 @@ import plotly.express as px
 import streamlit as st
 
 from modules.Utils import AREA_TYPES, load_interval, month_options
+from modules.area import area_label, area_selector
 
 st.title("Reservoir filling levels")
 st.caption("Source: NVE Magasinstatistikk API")
 
 # ---- Controls -----------------------------------------------------------
+# The area type comes from the shared selector in the sidebar (radio buttons),
+# so the analysis pages follow the same choice. This page shows every area
+# number of the chosen type; the chosen area is used on the analysis pages.
+area_type, area_number = area_selector()
+
 # The slider decides which part of the data is downloaded/kept, so everything
 # below reacts to it. Default: the last 12 months.
 months = month_options()
@@ -17,14 +23,6 @@ start, end = st.select_slider(
     "Download interval (months)",
     options=months,
     value=(default_start, months[-1]),
-)
-
-# Radio buttons pick the area type; each type has its own set of area numbers
-area_type = st.radio(
-    "Area type",
-    options=list(AREA_TYPES),
-    format_func=lambda key: f"{key} – {AREA_TYPES[key]}",
-    horizontal=True,
 )
 
 wide = load_interval(start, end, area_type)
@@ -60,3 +58,5 @@ fig.update_layout(xaxis_title="Date",
                   yaxis_title="Filling level (share of capacity)",
                   legend_title="Area")
 st.plotly_chart(fig)
+
+st.caption(f"Area used on the analysis pages: {area_label(area_type, area_number)}")
