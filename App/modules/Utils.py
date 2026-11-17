@@ -45,3 +45,17 @@ def month_options():
     """All months present in the data, as 'YYYY-MM' strings, for the slider."""
     df = load_raw()
     return sorted(df["date"].dt.strftime("%Y-%m").unique())
+
+def get_reservoirs():
+    """
+    load_raw() with error handling for the pages: if the NVE API cannot be
+    reached, show a clear message and stop the page instead of a traceback.
+    """
+    try:
+        with st.spinner("Downloading reservoir data from NVE ..."):
+            return load_raw()
+    except Exception as err:
+        st.error("Could not get reservoir data from NVE's Magasinstatistikk API. "
+                 "The service may be down; please try again later.")
+        st.caption(f"Details: {err}")
+        st.stop()

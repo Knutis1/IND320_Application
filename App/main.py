@@ -1,19 +1,42 @@
+"""
+Entry point of the app. Run with: streamlit run App/main.py
+
+Part 4: the menu is built with st.navigation, which groups the pages under
+headers by data source. This script runs before every page, so the shared
+sidebar (the area selector) is drawn here once and works on all pages.
+"""
+
 import streamlit as st
 
-st.set_page_config(page_title="IND320 Project", layout="wide")
+from modules import theme  # noqa: F401  (registers the Plotly theme)
+from modules.area import area_selector
 
-st.title("IND320 – Reservoirs, weather and power flows")
-st.write("Use the menu in the sidebar to open the pages. The area chosen in the "
-         "sidebar (price area, watercourse area or all of Norway) is shared by "
-         "the reservoir and analysis pages.")
+st.set_page_config(page_title="IND320 – Reservoirs, weather and power",
+                   page_icon="💧", layout="wide")
 
-st.markdown("""
-| Page | Content | Data |
-|---|---|---|
-| **Reservoirs** | Weekly filling levels per area, table and plot | NVE Magasinstatistikk API |
-| **Reservoir analysis** | STL decomposition and spectrogram of the filling level | NVE Magasinstatistikk API |
-| **Weather analysis** | Precipitation outliers (SPC) and temperature anomalies (LOF) | open-meteo, ERA5 |
-| **Flows** | Cross-border power flows | ENTSO-E data stored in MongoDB |
-| **About** | About the project | |
-""")
-# Streamlit builds the sidebar menu automatically from the files in pages/
+PAGES = {
+    "": [
+        st.Page("views/home.py", title="Home", icon="🏠", default=True),
+    ],
+    "Reservoirs (NVE)": [
+        st.Page("views/filling_levels.py", title="Filling levels", icon="💧"),
+        st.Page("views/decomposition.py", title="Decomposition", icon="📈"),
+    ],
+    "Weather (open-meteo)": [
+        st.Page("views/weather_anomalies.py", title="Outliers & anomalies", icon="🌦️"),
+    ],
+    "Power & economy": [
+        st.Page("views/flows.py", title="Cross-border flows", icon="⚡"),
+        st.Page("views/exchange_rates.py", title="Exchange rates", icon="💱"),
+    ],
+    "About": [
+        st.Page("views/about.py", title="About", icon="ℹ️"),
+    ],
+}
+
+page = st.navigation(PAGES)
+
+# Shared sidebar, below the menu
+area_selector()
+
+page.run()

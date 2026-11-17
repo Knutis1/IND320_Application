@@ -1,14 +1,16 @@
 """
-Analysis functions for Part 3, shared by the Streamlit app.
+Analysis functions shared by the Streamlit app.
 
-These are the same functions as in notebooks/Task3.ipynb, where each method is
-explained and tested. They return matplotlib figures, which the app shows with
-st.pyplot().
+The methods are the same as in notebooks/Task3.ipynb, where each one is
+explained and tested. In Part 4 the plots were changed from matplotlib to
+Plotly, so they are interactive (zoom, hover) and use the app's theme
+(modules/theme.py). The app shows them with st.plotly_chart().
 """
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from scipy.fft import dct, idct
 from scipy.signal import spectrogram
 from scipy.stats import median_abs_deviation
@@ -16,12 +18,14 @@ from sklearn.neighbors import LocalOutlierFactor
 from sklearn.preprocessing import StandardScaler
 from statsmodels.tsa.seasonal import STL
 
+from modules.theme import HIGHLIGHT
 
-def spc_outliers(series, cutoff_days=30, n_sigma=3.0, title="Precipitation"):
+
+def spc_outliers(series, cutoff_days=30, n_sigma=3.0, title="Temperature (°C)"):
     """
     Statistical Process Control on a high-pass filtered series.
 
-    series      : hourly pandas Series with a time index
+    series      : hourly pandas Series with a time index (any weather property)
     cutoff_days : DCT frequency cut-off, given as a period in days.
                   Variation slower than this is removed (the seasonal part).
     n_sigma     : number of robust standard deviations to the boundaries
@@ -52,18 +56,16 @@ def spc_outliers(series, cutoff_days=30, n_sigma=3.0, title="Precipitation"):
     is_out = np.abs(satv - centre) > n_sigma * sigma
 
     # Plot the original series with the boundaries. SATV itself is not plotted.
-    fig, ax = plt.subplots(figsize=(14, 5))
-    ax.plot(series.index, x, color="steelblue", linewidth=0.6, label=title)
-    ax.plot(series.index, upper, color="black", linestyle="--", linewidth=1,
-            label=f"SPC boundaries (±{n_sigma} robust σ)")
-    ax.plot(series.index, lower, color="black", linestyle="--", linewidth=1)
-    ax.scatter(series.index[is_out], x[is_out], color="crimson", s=10,
-               zorder=3, label="Outliers")
-    ax.set_title(f"{title}: SPC outliers (DCT cut-off {cutoff_days} days)")
-    ax.set_xlabel("Time (UTC)")
-    ax.set_ylabel(title)
-    ax.legend(loc="upper right")
-    ax.grid(alpha=0.3)
+    fig = go.Figure()
+    fig.add_scatter(x=series.index, y=x, name=title, line=dict(width=1))
+    fig.add_scatter(x=series.index, y=upper, name=f"SPC boundaries (±{n_sigma} robust σ)",
+                    line=dict(color="black", width=1, dash="dash"))
+    fig.add_scatter(x=series.index, y=lower, name="lower boundary", showlegend=False,
+                    line=dict(color="black", width=1, dash="dash"))
+    fig.add_scatter(x=series.index[is_out], y=x[is_out], name="Outliers",
+                    mode="markers", marker=dict(color=HIGHLIGHT, size=5))
+    fig.update_layout(title=f"{title}: SPC outliers (DCT cut-off {cutoff_days} days)",
+                      xaxis_title="Time (UTC)", yaxis_title=title, hovermode="closest")
 
     outliers = pd.DataFrame({"value": x[is_out], "satv": satv[is_out]},
                             index=series.index[is_out])
@@ -99,16 +101,13 @@ def lof_anomalies(series, contamination=0.01, n_neighbors=20,
     lof = LocalOutlierFactor(n_neighbors=n_neighbors, contamination=contamination)
     is_out = lof.fit_predict(X) == -1          # -1 marks an anomaly
 
-    fig, ax = plt.subplots(figsize=(14, 5))
-    ax.plot(series.index, values, color="steelblue", linewidth=0.6, label=title)
-    ax.scatter(series.index[is_out], values[is_out], color="crimson", s=10,
-               zorder=3, label="Anomalies (LOF)")
-    ax.set_title(f"{title}: Local Outlier Factor anomalies "
-                 f"(contamination {contamination:.0%})")
-    ax.set_xlabel("Time (UTC)")
-    ax.set_ylabel(title)
-    ax.legend(loc="upper right")
-    ax.grid(alpha=0.3)
+    fig = go.Figure()
+    fig.add_scatter(x=series.index, y=values, name=title, line=dict(width=1))
+    fig.add_scatter(x=series.index[is_out], y=values[is_out], name="Anomalies (LOF)",
+                    mode="markers", marker=dict(color=HIGHLIGHT, size=5))
+    fig.update_layout(title=f"{title}: Local Outlier Factor anomalies "
+                            f"(contamination {contamination:.1%})",
+                      xaxis_title="Time (UTC)", yaxis_title=title, hovermode="closest")
 
     anomalies = pd.DataFrame({"value": values[is_out]},
                              index=series.index[is_out])
@@ -143,11 +142,20 @@ def stl_decomposition(series, period=52, seasonal=13, trend=89, robust=True,
     result = STL(s, period=period, seasonal=seasonal, trend=trend,
                  robust=robust).fit()
 
-    fig = result.plot()
-    fig.set_size_inches(12, 8)
-    fig.suptitle(f"{title}: STL (seasonal={seasonal}, trend={trend}, "
-                 f"robust={robust})", y=1.02)
-    fig.tight_layout()
+    # One panel per component, sharing the time axis
+    parts = {"Observed": s, "Trend": result.trend, "Seasonal": result.seasonal,
+             "Residual": result.resid}
+    fig = make_subplots(rows=4, cols=1, shared_xaxes=True, vertical_spacing=0.04,
+                        subplot_titles=list(parts))
+    for row, (name, values) in enumerate(parts.items(), start=1):
+        if name == "Residual":
+            fig.add_scatter(x=values.index, y=values, name=name, mode="markers",
+                            marker=dict(size=3), row=row, col=1)
+        else:
+            fig.add_scatter(x=values.index, y=values, name=name, row=row, col=1)
+    fig.update_layout(height=750, showlegend=False,
+                      title=f"{title}: STL (seasonal={seasonal}, trend={trend}, "
+                            f"robust={robust})")
     return fig
 
 
@@ -174,12 +182,11 @@ def spectrogram_plot(series, window_length=104, overlap=78,
     # t is in years from the start; convert to dates for the x-axis
     times = s.index[0] + pd.to_timedelta(t * 365.25, unit="D")
 
-    fig, ax = plt.subplots(figsize=(12, 5))
-    mesh = ax.pcolormesh(times, freqs, 10 * np.log10(power + 1e-12),
-                         shading="auto")
-    fig.colorbar(mesh, ax=ax, label="Power (dB)")
-    ax.set_title(f"{title}: spectrogram (window {window_length} weeks, "
-                 f"overlap {overlap})")
-    ax.set_xlabel("Time")
-    ax.set_ylabel("Frequency (cycles per year)")
+    fig = go.Figure(go.Heatmap(x=times, y=freqs, z=10 * np.log10(power + 1e-12),
+                               colorscale="Viridis",
+                               colorbar=dict(title="Power (dB)")))
+    fig.update_layout(title=f"{title}: spectrogram (window {window_length} weeks, "
+                            f"overlap {overlap})",
+                      xaxis_title="Time", yaxis_title="Frequency (cycles per year)",
+                      hovermode="closest")
     return fig

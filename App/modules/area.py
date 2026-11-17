@@ -9,6 +9,10 @@ selector per page, so the pages can never disagree about which area is shown.
 The selector writes to its own session_state keys instead of giving the
 widgets a key, because Streamlit removes widget keys when the user moves to a
 page where that widget is not drawn.
+
+In Part 4 the selector is drawn once in main.py (the navigation script, which
+runs before every page), and the pages read the choice with current_area().
+The map page can also change the area by writing to the same keys.
 """
 
 import streamlit as st
@@ -63,5 +67,12 @@ def area_selector():
     )
 
     state["area_type"], state["area_number"] = area_type, area_number
-    st.sidebar.caption("The chosen area is used on every page.")
+    st.sidebar.caption("The chosen area is used on every page. "
+                       "You can also pick it by clicking on the map.")
     return area_type, area_number
+
+
+def current_area():
+    """The area chosen in the sidebar (or on the map): (area_type, area_number)."""
+    state = st.session_state
+    return state.get("area_type", "EL"), state.get("area_number", 3)

@@ -1,0 +1,9 @@
+# App theme: navy blue, beige and white, used by every page.
+# The Plotly charts use the same colours (modules/theme.py).
+[theme]
+base = "light"
+primaryColor = "#1B2A4A"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#EFE6D2"
+textColor = "#1B2A4A"
+font = "sans serif"

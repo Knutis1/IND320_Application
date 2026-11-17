@@ -3,12 +3,18 @@ import plotly.express as px
 import streamlit as st
 from pymongo import MongoClient
 
-st.title("Cross-border flows")
+from modules.decorations import power_lines
+from modules.theme import page_header
+
+power_lines()         # banner with power lines at the top
+page_header("Cross-border flows", "Power & economy",
+            "Source: ENTSO-E physical flows, stored in MongoDB")
 
 
 @st.cache_resource          # a connection: one shared object for the app
 def get_db():
-    return MongoClient(st.secrets["MONGO_URI"])["ind320"]
+    # Short timeout, so a missing connection gives an error quickly
+    return MongoClient(st.secrets["MONGO_URI"], serverSelectionTimeoutMS=5000)["ind320"]
 
 
 @st.cache_data(ttl=3600)    # data: cached per argument combination
@@ -27,7 +33,15 @@ def load_hourly(connection, year, months):
     return df.sort_values("ts")
 
 
-yearly = load_yearly()
+try:
+    with st.spinner("Reading from MongoDB ..."):
+        yearly = load_yearly()
+except Exception as err:      # no connection, wrong password or missing secret
+    st.error("Could not read the flows from MongoDB. The database may be "
+             "unavailable, or the connection string is missing in the secrets.")
+    st.caption(f"Details: {err}")
+    st.stop()
+
 connections = sorted(yearly["connection"].unique())
 
 left, right = st.columns(2)
@@ -55,11 +69,14 @@ with right:
         st.info("Choose at least one month.")
     else:
         hourly = load_hourly(conn, year, tuple(MONTHS[m] for m in picked))
-        line = px.line(hourly, x="ts", y="flow_mw", color="direction",
-                       title=f"{conn}: flow per direction")
-        line.update_layout(xaxis_title="Time (UTC)", yaxis_title="Flow (MW)",
-                           legend_title="Direction")
-        st.plotly_chart(line)
+        if hourly.empty:
+            st.warning("No data for the chosen months.")
+        else:
+            line = px.line(hourly, x="ts", y="flow_mw", color="direction",
+                           title=f"{conn}: flow per direction")
+            line.update_layout(xaxis_title="Time (UTC)", yaxis_title="Flow (MW)",
+                               legend_title="Direction")
+            st.plotly_chart(line)
 
 with st.expander("Data sources"):
     st.markdown("""
