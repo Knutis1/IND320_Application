@@ -18,3 +18,5 @@ metastore_db/
 derby.log
 jars/
 *.sqlite
+
+Claude outputs/
