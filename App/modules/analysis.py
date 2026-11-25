@@ -190,3 +190,64 @@ def spectrogram_plot(series, window_length=104, overlap=78,
                       xaxis_title="Time", yaxis_title="Frequency (cycles per year)",
                       hovermode="closest")
     return fig
+
+
+# ---- Sliding window correlation (Part 4) -----------------------------------
+def sliding_window_correlation(weather, reservoir, window=26, lag=0):
+    """
+    Correlation between a weather series and a reservoir series in a window
+    that slides through time.
+
+    weather, reservoir : weekly Series on the same weeks
+    window             : number of weeks in each window
+    lag                : weeks the weather is moved forward. lag = 4 compares
+                         the reservoir this week with the weather 4 weeks earlier,
+                         i.e. it tests whether the weather "leads" the reservoir.
+
+    Returns a DataFrame with the shifted weather, the reservoir series and the
+    rolling correlation (the value is placed at the last week of each window).
+    """
+    data = pd.DataFrame({"weather": weather.shift(lag), "reservoir": reservoir}).dropna()
+    data["correlation"] = data["weather"].rolling(window).corr(data["reservoir"])
+    return data
+
+
+def lag_scan(weather, reservoir, max_lag=26):
+    """Correlation over the whole period for every lag from -max_lag to max_lag."""
+    lags = range(-max_lag, max_lag + 1)
+    return pd.Series([reservoir.corr(weather.shift(lag)) for lag in lags],
+                     index=pd.Index(lags, name="lag (weeks)"), name="correlation")
+
+
+def correlation_plot(data, weather_label, reservoir_label, window, lag):
+    """
+    Two panels sharing the time axis: the two series (each on its own axis),
+    and the sliding window correlation below, coloured by sign.
+    """
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.08,
+                        row_heights=[0.5, 0.5],
+                        specs=[[{"secondary_y": True}], [{}]],
+                        subplot_titles=[f"{weather_label} (moved {lag} weeks) and "
+                                        f"{reservoir_label}",
+                                        f"Correlation in a {window}-week window"])
+    fig.add_scatter(x=data.index, y=data["reservoir"], name=reservoir_label, row=1, col=1)
+    fig.add_scatter(x=data.index, y=data["weather"], name=weather_label, row=1, col=1,
+                    secondary_y=True, line=dict(width=1))
+
+    corr = data["correlation"]
+    fig.add_scatter(x=corr.index, y=corr.clip(lower=0), name="positive correlation",
+                    fill="tozeroy", line=dict(width=0), fillcolor="rgba(27,42,74,0.55)",
+                    row=2, col=1)
+    fig.add_scatter(x=corr.index, y=corr.clip(upper=0), name="negative correlation",
+                    fill="tozeroy", line=dict(width=0), fillcolor="rgba(192,57,43,0.55)",
+                    row=2, col=1)
+    fig.add_hline(y=0, line=dict(color="black", width=1), row=2, col=1)
+    fig.update_yaxes(title_text=reservoir_label, row=1, col=1)
+    fig.update_yaxes(title_text=weather_label, secondary_y=True, row=1, col=1)
+    fig.update_yaxes(title_text="correlation", range=[-1, 1], row=2, col=1)
+    # Legend below the chart, so it does not cover the panel titles at the top
+    fig.update_layout(height=720, hovermode="x unified",
+                      title="Sliding window correlation",
+                      legend=dict(orientation="h", y=-0.08, yanchor="top", x=0),
+                      margin=dict(t=90, b=60))
+    return fig

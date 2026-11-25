@@ -76,3 +76,18 @@ def current_area():
     """The area chosen in the sidebar (or on the map): (area_type, area_number)."""
     state = st.session_state
     return state.get("area_type", "EL"), state.get("area_number", 3)
+
+
+def set_area(area_type, area_number):
+    """Change the shared area (used by the map when an area is clicked)."""
+    st.session_state["area_type"] = area_type
+    st.session_state["area_number"] = area_number
+
+
+def current_week(default=None):
+    """
+    The week chosen with the time slider on the map (a Sunday, like the dates in
+    Magasinstatistikk). The forecast page uses it as the end of the training
+    data, so the two pages follow the same time.
+    """
+    return st.session_state.get("week", default)

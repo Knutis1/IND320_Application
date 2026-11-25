@@ -13,13 +13,17 @@ st.info(f"Chosen area: **{area_label(area_type, area_number)}**. Change it in th
         "sidebar. It is used on all reservoir and weather pages.")
 
 # One card per group, with links to its pages
+st.page_link("views/map.py", label="**Start with the map**: choose an area and a week", icon="🗺️")
+
 groups = {
     "Reservoirs": ("Reservoirs (NVE)", [
         ("views/filling_levels.py", "Filling levels", "Weekly filling level per area"),
         ("views/decomposition.py", "Decomposition", "STL and spectrogram"),
+        ("views/forecast.py", "Forecast", "SNARIMAX forecast with weather inputs"),
     ]),
     "Weather": ("Weather (open-meteo)", [
         ("views/weather_anomalies.py", "Outliers & anomalies", "SPC and LOF on a weather property"),
+        ("views/correlation.py", "Weather vs reservoirs", "Sliding window correlation with lag"),
     ]),
     "Power & economy": ("Power & economy", [
         ("views/flows.py", "Cross-border flows", "ENTSO-E flows from MongoDB"),

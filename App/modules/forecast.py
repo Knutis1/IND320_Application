@@ -85,14 +85,20 @@ def future_exog(exog, horizon):
     return future
 
 
-def make_model(p=1, d=0, q=0, sp=1, sd=1, sq=0, learning_rate=0.01):
+def make_model(p=1, d=0, q=0, sp=1, sd=1, sq=0, learning_rate=0.01, quantile=None):
     """
     SNARIMAX with a 52-week season. The regressor is a linear model trained
     with stochastic gradient descent; the scaler puts all inputs on the same
     scale so one learning rate works for all of them.
+
+    quantile : None for the normal forecast (squared loss). A number such as
+               0.05 or 0.95 trains the model with the quantile (pinball) loss
+               instead, so it predicts that quantile. Two such models give a
+               confidence interval around the forecast.
     """
+    loss = optim.losses.Squared() if quantile is None else optim.losses.Quantile(alpha=quantile)
     regressor = (preprocessing.StandardScaler()
-                 | linear_model.LinearRegression(intercept_init=0,
+                 | linear_model.LinearRegression(intercept_init=0, loss=loss,
                                                  optimizer=optim.SGD(learning_rate),
                                                  intercept_lr=learning_rate))
     return time_series.SNARIMAX(p=p, d=d, q=q, m=WEEKS_PER_YEAR,
@@ -101,7 +107,7 @@ def make_model(p=1, d=0, q=0, sp=1, sd=1, sq=0, learning_rate=0.01):
 
 def forecast_filling(fill, exog=None, exog_columns=None, history_years=15,
                      horizon=12, end=None, p=1, d=0, q=0, sp=1, sd=1, sq=0,
-                     learning_rate=0.01):
+                     learning_rate=0.01, quantile=None):
     """
     Forecast the weekly filling level for one area.
 
@@ -117,6 +123,8 @@ def forecast_filling(fill, exog=None, exog_columns=None, history_years=15,
     p, d, q       : non-seasonal AR order, differencing, MA order
     sp, sd, sq    : the same for the 52-week season
     learning_rate : step size of the regressor
+    quantile      : None for the normal forecast, or e.g. 0.05 / 0.95 for the
+                    lower / upper limit of a confidence interval
 
     Returns a Series with the forecast, indexed by the coming weeks.
     """
@@ -131,7 +139,7 @@ def forecast_filling(fill, exog=None, exog_columns=None, history_years=15,
         if columns:
             x_train = fill_gaps(exog[columns].reindex(fill.index)).loc[train.index]
 
-    model = make_model(p, d, q, sp, sd, sq, learning_rate)
+    model = make_model(p, d, q, sp, sd, sq, learning_rate, quantile)
     for t, y in train.items():                        # online learning, week by week
         x = None if x_train is None else x_train.loc[t].to_dict()
         model.learn_one(y, x=x)

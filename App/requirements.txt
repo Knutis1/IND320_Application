@@ -8,3 +8,5 @@ scipy
 scikit-learn
 statsmodels
 river
+folium
+streamlit-folium

@@ -191,3 +191,137 @@ def waterfalls(width=70):
     to {{ background-position: left 0 top 160px, right 0 top 160px; }}
 }}
 """)
+
+
+def _svg_url(svg):
+    """An SVG drawing as a CSS background url (animations inside the SVG still run)."""
+    return f'url("data:image/svg+xml;utf8,{quote(svg)}")'
+
+
+def weather_friends():
+    """
+    Four small weather figures (sun, rain cloud, snow cloud and wind) floating
+    in the empty space on both sides of the page, so they never cover the
+    content. Each one bobs gently up and down.
+    """
+    face = ("<circle cx='-9' cy='-2' r='3.2' fill='#1B2A4A'/>"
+            "<circle cx='9' cy='-2' r='3.2' fill='#1B2A4A'/>"
+            "<path d='M-7,8 Q0,14 7,8' stroke='#1B2A4A' stroke-width='2.5' fill='none' "
+            "stroke-linecap='round'/>")
+    cloud = ("<g fill='{c}' stroke='#1B2A4A' stroke-width='2'>"
+             "<circle cx='-22' cy='8' r='18'/><circle cx='0' cy='-6' r='24'/>"
+             "<circle cx='24' cy='6' r='19'/><rect x='-40' y='6' width='82' height='22' rx='11'/>"
+             "</g><rect x='-38' y='8' width='78' height='18' fill='{c}'/>")
+    sun = ("<g class='bob'><g class='spin'>"
+           + "".join(f"<rect x='-4' y='-52' width='8' height='16' rx='4' fill='#F4A300' "
+                     f"transform='rotate({a})'/>" for a in range(0, 360, 45))
+           + "</g><circle r='30' fill='#FFC93C' stroke='#1B2A4A' stroke-width='2'/>"
+           + face + "</g>")
+    rain = ("<g class='bob' style='animation-delay:-1s'>" + cloud.format(c="#9DB4CC")
+            + "".join(f"<path class='drop' d='M{x},34 v10' stroke='#2D5D8A' stroke-width='3' "
+                      f"stroke-linecap='round' style='animation-delay:-{d}s'/>"
+                      for x, d in ((-22, 0), (-4, 0.4), (14, 0.2), (30, 0.6)))
+            + "<g transform='translate(0,6)'>" + face + "</g></g>")
+    snow = ("<g class='bob' style='animation-delay:-2s'>" + cloud.format(c="#F4F8FB")
+            + "".join(f"<text class='flake' x='{x}' y='44' font-size='14' fill='#7FA7CF' "
+                      f"style='animation-delay:-{d}s'>✻</text>"
+                      for x, d in ((-26, 0), (-6, 0.9), (16, 0.5)))
+            + "<g transform='translate(0,6)'>" + face + "</g></g>")
+    wind = ("<g class='bob' style='animation-delay:-0.5s'>"
+            + "".join(f"<path class='gust' d='M-40,{y} H20 a12,12 0 1 0 -12,-12' "
+                      f"stroke='#5B6C7D' stroke-width='5' fill='none' stroke-linecap='round' "
+                      f"style='animation-delay:-{d}s'/>"
+                      for y, d in ((-12, 0), (8, 0.5), (28, 1)))
+            + "</g>")
+    style = ("<style>"
+             ".bob{animation:bob 3.5s ease-in-out infinite alternate}"
+             ".spin{animation:spin 18s linear infinite}"
+             ".drop{animation:drop 1.1s linear infinite}"
+             ".flake{animation:drop 2.6s linear infinite}"
+             ".gust{stroke-dasharray:60 40;animation:gust 2s linear infinite}"
+             "@keyframes bob{to{transform:translateY(14px)}}"
+             "@keyframes spin{to{transform:rotate(360deg)}}"
+             "@keyframes drop{from{transform:translateY(0);opacity:1}"
+             "to{transform:translateY(26px);opacity:0}}"
+             "@keyframes gust{to{stroke-dashoffset:-100}}"
+             "</style>")
+
+    def column(first, second):
+        return (f"<svg xmlns='http://www.w3.org/2000/svg' width='120' height='760'>{style}"
+                f"<g transform='translate(60,110)'>{first}</g>"
+                f"<g transform='translate(60,470)'>{second}</g></svg>")
+
+    _page_css(f"""
+[data-testid="stMain"] {{
+    background-image: {_svg_url(column(sun, rain))}, {_svg_url(column(snow, wind))};
+    background-repeat: no-repeat, no-repeat;
+    background-position: left 10px top 60px, right 10px top 60px;
+    background-size: 120px 760px, 120px 760px;
+}}
+[data-testid="stMainBlockContainer"] {{
+    padding-left: 160px !important; padding-right: 160px !important;
+}}
+""")
+
+
+def snow_to_reservoir():
+    """
+    A banner that tells the story of the correlation page: snow falls on the
+    mountains in winter, melts when the sun comes back in spring, runs down
+    the river and fills the reservoir behind the dam, which is then slowly
+    drawn down until the next winter. One loop is one year (14 seconds).
+    """
+    flakes = "".join(
+        f"<circle class='flake' cx='{x}' cy='-5' r='{r}' fill='white' "
+        f"style='animation-delay:-{d}s'/>"
+        for x, r, d in ((80, 3, 0), (170, 2.5, 0.8), (260, 3, 1.6), (350, 2, 0.4),
+                        (430, 3, 1.2), (520, 2.5, 2.0), (610, 3, 0.6), (690, 2, 1.8)))
+    svg = (
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 170' "
+        "preserveAspectRatio='xMidYMid slice'>"
+        "<style>"
+        "*{transform-box:fill-box}"
+        ".sky{animation:sky 14s linear infinite}"
+        ".sun{animation:sun 14s ease-in-out infinite}"
+        ".cap{transform-origin:50% 0%;animation:cap 14s ease-in-out infinite}"
+        ".flake{animation:fall 2.4s linear infinite,season 14s linear infinite}"
+        ".river{stroke-dasharray:14 10;animation:flow 0.8s linear infinite,riverflow 14s linear infinite}"
+        ".water{transform-origin:50% 100%;animation:fill 14s ease-in-out infinite}"
+        ".label{font:600 15px sans-serif;fill:#1B2A4A}"
+        "@keyframes sky{0%,30%{fill:#AFC3D6}45%,80%{fill:#BFE3F7}100%{fill:#AFC3D6}}"
+        "@keyframes sun{0%,25%{transform:translateY(90px)}45%,75%{transform:translateY(0)}"
+        "100%{transform:translateY(90px)}}"
+        "@keyframes cap{0%,30%{transform:scaleY(1)}55%,85%{transform:scaleY(0.15)}100%{transform:scaleY(1)}}"
+        "@keyframes fall{from{transform:translateY(0)}to{transform:translateY(120px)}}"
+        "@keyframes season{0%,28%{opacity:1}35%,88%{opacity:0}95%,100%{opacity:1}}"
+        "@keyframes flow{to{stroke-dashoffset:-48}}"
+        "@keyframes riverflow{0%,30%{opacity:0.15}40%,60%{opacity:1}75%,100%{opacity:0.25}}"
+        "@keyframes fill{0%,32%{transform:scaleY(0.3)}62%{transform:scaleY(1)}100%{transform:scaleY(0.3)}}"
+        "</style>"
+        "<rect class='sky' width='1200' height='170'/>"
+        "<g class='sun'><circle cx='560' cy='45' r='24' fill='#FFC93C'/></g>"
+        f"{flakes}"
+        # mountains with snow caps that shrink in spring
+        "<polygon points='0,170 150,40 300,170' fill='#4A5A75'/>"
+        "<polygon points='180,170 360,25 540,170' fill='#3B4A66'/>"
+        "<polygon points='420,170 560,70 700,170' fill='#4A5A75'/>"
+        "<g class='cap'><polygon points='114,70 150,40 186,70 165,64 150,72 133,64' fill='white'/></g>"
+        "<g class='cap'><polygon points='310,66 360,25 410,66 385,58 360,70 335,58' fill='white'/></g>"
+        "<g class='cap'><polygon points='532,93 560,70 588,93 572,88 560,96 547,88' fill='white'/></g>"
+        # ground, river from the mountains to the reservoir
+        "<rect y='150' width='1200' height='20' fill='#B9A57E'/>"
+        "<path class='river' d='M360,120 C450,150 600,135 700,150 S860,150 900,140' "
+        "stroke='#4F86C6' stroke-width='7' fill='none' stroke-linecap='round'/>"
+        # reservoir basin, water and dam
+        "<rect x='880' y='60' width='230' height='95' rx='6' fill='#E6DCC6'/>"
+        "<g class='water'><rect x='884' y='64' width='222' height='88' rx='4' fill='#2D5D8A'/></g>"
+        "<rect x='1105' y='40' width='22' height='120' fill='#8A7353'/>"
+        "<text class='label' x='640' y='24'>snow in winter → melt in spring → full reservoir</text>"
+        "</svg>")
+    st.html(f"""
+<style>
+.melt-banner {{ width: 100%; height: 170px; border-radius: 12px; pointer-events: none;
+                margin-bottom: 4px; background: {_svg_url(svg)} center / cover no-repeat; }}
+</style>
+<div class="melt-banner"></div>
+""")

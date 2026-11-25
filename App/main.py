@@ -18,12 +18,17 @@ PAGES = {
     "": [
         st.Page("views/home.py", title="Home", icon="🏠", default=True),
     ],
+    "Overview": [
+        st.Page("views/map.py", title="Map", icon="🗺️"),
+    ],
     "Reservoirs (NVE)": [
         st.Page("views/filling_levels.py", title="Filling levels", icon="💧"),
         st.Page("views/decomposition.py", title="Decomposition", icon="📈"),
+        st.Page("views/forecast.py", title="Forecast", icon="🔮"),
     ],
     "Weather (open-meteo)": [
         st.Page("views/weather_anomalies.py", title="Outliers & anomalies", icon="🌦️"),
+        st.Page("views/correlation.py", title="Weather vs reservoirs", icon="🔗"),
     ],
     "Power & economy": [
         st.Page("views/flows.py", title="Cross-border flows", icon="⚡"),
